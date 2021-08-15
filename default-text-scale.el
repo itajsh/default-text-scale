@@ -49,18 +49,13 @@
 (defvar default-text-scale--complement 0
   "Stores the delta needed to get back to the original default face height.")
 
-(defun default-text-scale-increment (delta)
-  "Adjust the default font height by DELTA on every graphical frame.
+(defun default-text-scale--apply (new-height)
+  "Adjust the default font height on every graphical frame.
 The pixel size of the frame will be kept approximately the same,
 to the extent possible, as with the function `set-frame-font'.
-DELTA should be a multiple of 10, to match the units used by
+value should be a multiple of 10, to match the units used by
 the :height face attribute."
-  (interactive "nIncrement (e.g. 10, -5)? ")
-  (unless (display-multi-font-p (selected-frame))
-    (error "Cannot adjust default text scale from a non-graphical frame"))
-  (let* ((cur-height (face-attribute 'default :height))
-         (new-height (+ cur-height delta))
-         (initial-char-width (frame-char-width (selected-frame)))
+  (let* ((initial-char-width (frame-char-width (selected-frame)))
          (initial-char-height (frame-char-height (selected-frame)))
          frame-sizes)
     (dolist (f (frame-list))
@@ -85,6 +80,20 @@ the :height face attribute."
     ;; actually-applied height to be correctly returned
     ;; below. Evidently some visible text must be displayed (however
     ;; briefly) for this to occur: a temp buffer is insufficient.
+    ))
+
+(defun default-text-scale-increment (delta)
+  "Adjust the default font height by DELTA on every graphical frame.
+The pixel size of the frame will be kept approximately the same,
+to the extent possible, as with the function `set-frame-font'.
+DELTA should be a multiple of 10, to match the units used by
+the :height face attribute."
+  (interactive "nIncrement (e.g. 10, -5)? ")
+  (unless (display-multi-font-p (selected-frame))
+    (error "Cannot adjust default text scale from a non-graphical frame"))
+  (let* ((cur-height (face-attribute 'default :height))
+         (new-height (+ cur-height delta)))
+    (default-text-scale--apply new-height)
     (message "Stale font size: %d" (face-attribute 'default :height))
     (let* ((actual-new-height (face-attribute 'default :height))
            (actual-delta (- actual-new-height cur-height)))
@@ -113,6 +122,14 @@ default to which subsequent sizes would be reset."
       (message "Default font size set to current size.")
     (default-text-scale-increment default-text-scale--complement))
   (setq default-text-scale--complement 0))
+
+;;;###autoload
+(defun default-text-scale-set (new-height)
+  "Set the height of the default face."
+  (interactive "nHeight:")
+  (setq default-text-scale--complement 0)
+  (default-text-scale--apply new-height)
+  (message "Default font size is %d" new-height))
 
 (defun default-text-scale--update-for-new-frame (f)
   "Recalculate the font size in new frame F.
